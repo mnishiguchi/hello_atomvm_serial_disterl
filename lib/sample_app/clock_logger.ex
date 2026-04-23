@@ -3,6 +3,8 @@ defmodule SampleApp.ClockLogger do
   Logs time once per tick interval.
   """
 
+  use GenServer
+
   @timezone_name "JST"
   @timezone_offset_ms :timer.hours(9)
 
@@ -11,31 +13,35 @@ defmodule SampleApp.ClockLogger do
   ## Public API
 
   def start_link(opts \\ []) do
-    :gen_server.start_link({:local, __MODULE__}, __MODULE__, :ok, opts)
+    GenServer.start_link(__MODULE__, :ok, Keyword.put(opts, :name, __MODULE__))
   end
 
   def stop do
-    :gen_server.stop(__MODULE__)
+    GenServer.stop(__MODULE__)
   end
 
   ## gen_server callbacks
 
+  @impl GenServer
   def init(:ok) do
     print_local_time()
     schedule_tick()
     {:ok, %{}}
   end
 
+  @impl GenServer
   def handle_info(:tick, state) do
     print_local_time()
     schedule_tick()
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(_msg, state) do
     {:noreply, state}
   end
 
+  @impl GenServer
   def terminate(_reason, _state), do: :ok
 
   ## Internals

@@ -3,19 +3,21 @@ defmodule SampleApp.DistErl do
   Starts Distributed Erlang once Wi-Fi has an IPv4 address.
   """
 
+  use GenServer
+
   @compile {:no_warn_undefined, :epmd}
   @compile {:no_warn_undefined, :net_kernel}
 
-  @cookie <<"AtomVM">>
+  @cookie "AtomVM"
   @listen_port 9100
   @node_base "piyopiyo"
 
   def start_link(opts \\ []) do
-    :gen_server.start_link({:local, __MODULE__}, __MODULE__, :ok, opts)
+    GenServer.start_link(__MODULE__, :ok, Keyword.put(opts, :name, __MODULE__))
   end
 
   def maybe_start(ip_info) do
-    :gen_server.cast(__MODULE__, {:maybe_start, ip_info})
+    GenServer.cast(__MODULE__, {:maybe_start, ip_info})
   end
 
   def hello do
@@ -23,10 +25,12 @@ defmodule SampleApp.DistErl do
     {:hello_from_atomvm, :erlang.node()}
   end
 
+  @impl GenServer
   def init(:ok) do
     {:ok, %{started?: false, node_name: nil}}
   end
 
+  @impl GenServer
   def handle_cast({:maybe_start, {address, _netmask, _gateway}}, %{started?: false} = state) do
     case start_distribution(address) do
       {:ok, node_name} ->
@@ -46,6 +50,7 @@ defmodule SampleApp.DistErl do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(:demo_message, state) do
     IO.puts("disterl: received :demo_message")
     {:noreply, state}
