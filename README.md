@@ -4,36 +4,27 @@ SPDX-FileCopyrightText: 2026 piyopiyo.ex members
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# hello_atomvm_disterl
+# AtomVM serial distributed Erlang サンプル
 
-ESP32 上で Wi-Fi 接続、SNTP による時刻同期、分散 Erlang を試すための AtomVM サンプルです。
+ESP32 2 台を UART で直結し、AtomVM の serial distributed Erlang を試すための小さなサンプルです。
 
 このサンプルでは、次の動作を確認できます。
 
-- 環境変数から Wi-Fi 情報を受け取って NVS に保存する
-- Wi-Fi 接続後に SNTP で時刻同期する
-- IP アドレス取得後に分散 Erlang ノードを起動する
-- 定期的にローカル時刻をシリアルへ出力する
-- ホスト PC の IEx から `Node.connect/1` や `:erpc.call/4` で接続する
+- 2 台の ESP32 を `serial_dist` で接続する
+- `a@serial.local` と `b@serial.local` のような固定名でノードを起動する
+- 各ノードで登録プロセス `:demo` を起動する
+- 一方のノードから他方のノードへ `ping` を送り、`pong` を返す
 
-現在は AtomVM 0.7 系の機能が必要なため、`mix atomvm.esp32.install` ではなく、このリポジトリーに含まれているカスタム AtomVM イメージを使ってください。
+現在は AtomVM `release-0.7` 系の serial distribution 機能を前提にしています。
 
 参考情報:
 
-- AtomVM の `main` ドキュメントには分散 Erlang の専用ガイドがあります
-  - https://doc.atomvm.org/main/distributed-erlang.html
-- AtomVM の unreleased changelog には、distribution 関連の追加や修正が含まれています
-  - https://doc.atomvm.org/main/CHANGELOG.html
-
-補足:
-
-- 2026-04-23 時点では、安定版 `release-0.6` 系ドキュメントには分散 Erlang の公開ガイドが見当たりませんでした
-- そのため、この README では「`disterl` を使うには unreleased 側の AtomVM が必要」という前提で案内しています
+- AtomVM `release-0.7` の distributed Erlang ガイド
+  - https://doc.atomvm.org/release-0.7/distributed-erlang.html
 
 ## 対象機材
 
-- AtomVM が対応する `ESP32` 開発ボード
-- AtomVM が対応する `ESP32-S3` 開発ボード
+- AtomVM が対応する `ESP32` 開発ボード 2 台
 
 このリポジトリーでは現在、`atomvm-esp32-elixir.img` と `atomvm-esp32s3-elixir.img` を同梱しています。
 
@@ -42,18 +33,56 @@ ESP32 上で Wi-Fi 接続、SNTP による時刻同期、分散 Erlang を試す
 本サンプルでは、次の環境を想定しています。
 
 - macOS または Linux
-- データ転送に対応した USB ケーブル
+- データ転送に対応した USB ケーブル 2 本
+- ジャンパーワイヤー 3 本以上
 - Elixir
 - `mix` (Elixir プロジェクトのビルドや書き込みに使うコマンド)
 - `esptool` (`ESP32` / `ESP32-S3` にイメージを書き込むためのツール)
 - `tio` (シリアルログを確認するためのツール)
+
+## 配線
+
+2 台のボードを 1 本の UART で直結します。
+各ボードは、書き込みとログ確認のために USB でも個別にホスト PC へ接続したままにします。
+
+```mermaid
+flowchart TB
+    host[Host PC]
+
+    subgraph leftside[Left side]
+        boarda[Board A<br/>a@serial.local]
+    end
+
+    subgraph rightside[Right side]
+        boardb[Board B<br/>b@serial.local]
+    end
+
+    host -->|USB| boarda
+    host -->|USB| boardb
+
+    boarda -->|TX to RX| boardb
+    boardb -->|TX to RX| boarda
+    boarda ---|GND| boardb
+```
+
+- Board A TX -> Board B RX
+- Board A RX -> Board B TX
+- Board A GND -> Board B GND
+
+このアプリケーションでは、デフォルトで `UART1` を使います。
+
+- TX ピン: `17`
+- RX ピン: `16`
+- 通信速度: `115200`
+
+ボードや配線に応じて、必要なら環境変数で上書きしてください。
 
 ## 使い方
 
 このディレクトリーに移動します。
 
 ```sh
-cd hello_atomvm_disterl
+cd hello_atomvm_disterl_serial
 ```
 
 依存関係を取得します。
@@ -91,23 +120,56 @@ esptool --chip esp32s3 --port /dev/ttyACM0 write-flash 0x0 atomvm-esp32s3-elixir
 
 - https://doc.atomvm.org/main/getting-started-guide.html
 
-アプリケーションを書き込む前に Wi-Fi 情報を設定します。
+## 環境変数
+
+### ノード名
+
+| 環境変数 | 説明 |
+| -------- | ---- |
+| `ATOMVM_NODE_ALIAS` | 自ノードの別名。既定値は `a` |
+| `ATOMVM_PEER_ALIAS` | 相手ノードの別名。既定値は、自ノードが `a` のとき `b`、それ以外のとき `a` |
+
+ノード名は `<alias>@serial.local` の形で組み立てられます。
+
+例:
+
+- `a@serial.local`
+- `b@serial.local`
+
+### デモ動作
+
+| 環境変数 | 説明 |
+| -------- | ---- |
+| `ATOMVM_AUTO_PING` | truthy な値を設定すると、起動後に 1 回だけ相手ノードへ `ping` を送る |
+| `ATOMVM_PING_DELAY_MS` | 自動 `ping` までの待ち時間。既定値は `1000` ミリ秒 |
+
+### UART 設定
+
+| 環境変数 | 説明 |
+| -------- | ---- |
+| `ATOMVM_UART_PERIPHERAL` | UART 名。既定値は `UART1` |
+| `ATOMVM_UART_SPEED` | 通信速度。既定値は `115200` |
+| `ATOMVM_UART_TX_PIN` | TX ピン番号。既定値は `17` |
+| `ATOMVM_UART_RX_PIN` | RX ピン番号。既定値は `16` |
+
+## 書き込み例
+
+Board A 側:
 
 ```sh
-export ATOMVM_WIFI_SSID="your-ssid"
-export ATOMVM_WIFI_PASSPHRASE="your-passphrase"
-```
-
-必要に応じて、起動のたびに NVS 上の Wi-Fi 情報を上書きできます。
-
-```sh
-export ATOMVM_WIFI_FORCE=true
-```
-
-アプリケーションを書き込みます。
-
-```sh
+export ATOMVM_NODE_ALIAS=a
+export ATOMVM_PEER_ALIAS=b
+unset ATOMVM_AUTO_PING
 mix atomvm.esp32.flash --port /dev/ttyACM0
+```
+
+Board B 側:
+
+```sh
+export ATOMVM_NODE_ALIAS=b
+export ATOMVM_PEER_ALIAS=a
+export ATOMVM_AUTO_PING=true
+mix atomvm.esp32.flash --port /dev/ttyACM1
 ```
 
 接続先は必要に応じて読み替えてください。
@@ -125,83 +187,45 @@ tio --list
 
 ## 動作確認
 
-別端末でシリアルログを開きます。
+別端末で各ボードのシリアルログを開きます。
 
 ```sh
 tio /dev/ttyACM0
 ```
 
-Wi-Fi 接続に成功すると、次のようなログが表示されます。
+```sh
+tio /dev/ttyACM1
+```
+
+起動に成功すると、各ノードで次のようなログが表示されます。
 
 ```text
-wifi: first-time provision (stored Wi-Fi credentials in NVS)
-wifi: connected to AP
-wifi: got IP {{192,168,1,123},{255,255,255,0},{192,168,1,1}}
-disterl: started
-disterl: node :"piyopiyo@192.168.1.123"
-disterl: cookie <<"AtomVM">>
-disterl: registered process :disterl
-sntp: synced {tv_sec, tv_usec}
-Date: 2026/01/23 21:42:01 (1737636121000ms) JST
+serial_dist: started
+serial_dist: alias a
+serial_dist: node :"a@serial.local"
+serial_dist: peer :"b@serial.local"
+serial_dist: cookie <<"AtomVM">>
+serial_dist: uart [{:peripheral, "UART1"}, {:speed, 115200}, {:tx, 17}, {:rx, 16}]
+serial_dist: ready
+demo: registered process :demo
 ```
 
-## リモート接続
+`ATOMVM_AUTO_PING=true` を設定した側では、さらに次のようなログが表示されます。
 
-ESP32 側でノード名が表示されたら、ホスト PC で IEx をノード名付きで起動します。
-`YOUR_HOST_LAN_IP` には、ESP32 と同じネットワーク上にあるホスト PC の IP アドレスを指定してください。
-
-```sh
-# 必要ならホスト PC の IP アドレスを確認
-hostname -I
-
-# ホスト側のノードを起動
-iex --name host@YOUR_HOST_LAN_IP --cookie AtomVM
+```text
+demo: sending ping to :"a@serial.local"
+demo: received pong from :"a@serial.local"
 ```
 
-次に IEx 上で ESP32 ノードへ接続します。`YOUR_ESP32_IP` には、シリアルログに表示された ESP32 側の IP アドレスを指定してください。
+相手側では、次のようなログが表示されます。
 
-```elixir
-# 接続先のノード名
-device = :"piyopiyo@YOUR_ESP32_IP"
-
-# 接続を試す
-Node.connect(device)
-
-# 接続済みノードを確認
-Node.list(:connected)
-
-# リモート関数呼び出しを試す
-:erpc.call(device, SampleApp.DistErl, :hello, [])
-
-# メッセージ送信を試す
-send({:disterl, device}, :demo_message)
+```text
+demo: received ping from :"b@serial.local"
+demo: sent pong from :"a@serial.local"
 ```
 
 期待される動作:
 
-- `Node.connect(device)` が `true` を返す
-- `Node.list(:connected)` に `device` が含まれる
-- `:erpc.call(device, SampleApp.DistErl, :hello, [])` が `{:hello_from_atomvm, :"piyopiyo@192.168.1.123"}` のような値を返す
-- `send({:disterl, device}, :demo_message)` により ESP32 側で `disterl: received :demo_message` が表示される
-
-## Wi-Fi プロビジョニング
-
-Wi-Fi 情報は起動時に NVS へ保存され、次回以降の起動でも再利用されます。
-
-### 環境変数
-
-| 環境変数 | NVS キー | 説明 |
-| -------- | -------- | ---- |
-| `ATOMVM_WIFI_SSID` | `wifi_ssid` | 保存する Wi-Fi SSID |
-| `ATOMVM_WIFI_PASSPHRASE` | `wifi_passphrase` | 保存する Wi-Fi パスフレーズ。オープンネットワークでは省略可 |
-| `ATOMVM_WIFI_FORCE` | — | 設定されていると、起動時に認証情報を上書きする |
-
-### 挙動
-
-- 初回起動時
-  - `ATOMVM_WIFI_SSID` が設定されていれば NVS に保存される
-- 2 回目以降の起動
-  - NVS に保存済みの情報を再利用する
-- `ATOMVM_WIFI_FORCE` を設定した場合
-  - 起動のたびに NVS の認証情報を上書きする
-  - パスフレーズ未指定で上書きすると、既存のパスフレーズは削除される
+- 2 台のノードがそれぞれ `serial_dist: ready` を表示する
+- 自動 `ping` を有効にした側で `pong` を受信する
+- 相手側で `ping` を受信したログが表示される

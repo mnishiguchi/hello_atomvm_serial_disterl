@@ -25,9 +25,7 @@ defmodule SampleApp.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:exatomvm, github: "atomvm/exatomvm"},
-      {:pythonx, "~> 0.4.0", runtime: false},
-      {:req, "~> 0.5.0", runtime: false}
+      {:exatomvm, github: "atomvm/exatomvm"}
     ]
   end
 end
