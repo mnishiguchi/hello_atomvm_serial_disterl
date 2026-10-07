@@ -285,6 +285,8 @@ RS485 A/B bus 上の bidirectional echo と Modbus slave response は、transcei
 
 長期的な設計判断は [`docs/adr`](docs/adr/README.md) に記録しています。
 
+調査中に分かったことや実機検証の範囲は [`docs/worklog`](docs/worklog/README.md) に記録しています。
+
 ## 参考資料
 
 - [AtomVM release-0.7 UART guide](https://doc.atomvm.org/release-0.7/programmers-guide.html#uart)

@@ -11,7 +11,7 @@
 | [0001](0001-serial-distを使って2台のesp32を接続する.md) | 2 台の AtomVM デバイスを UART でどう接続するか | AtomVM の `serial_dist` を専用 UART 上で使用する |
 | [0002](0002-自動方向制御rs485と最小modbus実装を使う.md) | AtomVM から RS485 / Modbus RTU をどう扱うか | 自動方向制御 transceiver と小さな AtomVM-native 実装を使用する |
 
-これらは現在の採用判断です。実装手順、一時的な検証結果、配線方法などは ADR ではなく README や各サンプルのドキュメントに記録します。
+これらは現在の採用判断です。実装手順、一時的な検証結果、配線方法などは ADR ではなく README や [`docs/worklog`](../worklog/README.md) に記録します。
 
 ## ADR の書き方
 
