@@ -6,7 +6,7 @@
 
 ## 背景
 
-ESP32-C5 から RS485 上の Modbus RTU slave に接続したい。
+AtomVM を実行する ESP32 から RS485 上の Modbus RTU slave に接続したい。現在の検証 board は Seeed Studio XIAO ESP32-C5 だが、設計を ESP32-C5 固有にはしない。
 
 AtomVM は通常の UART API を提供するが、ESP-IDF の native RS485 half-duplex mode は公開していない。また、既存の Elixir Modbus library の多くは Linux / Nerves 向けの `Circuits.UART` を前提としている。
 
@@ -22,7 +22,7 @@ AtomVM は通常の UART API を提供するが、ESP-IDF の native RS485 half-
 
 自動方向制御 transceiver を使えば、AtomVM application から DE / RE timing を管理せずに通常の UART として扱える。
 
-小さな protocol layer だけを実装することで、`Circuits.UART` dependency や不要な Modbus feature を持ち込まず、ESP32-C5 上で検証したい経路へ集中できる。
+小さな protocol layer だけを実装することで、`Circuits.UART` dependency や不要な Modbus feature を持ち込まず、ESP32 上で検証したい経路へ集中できる。
 
 ## 影響
 

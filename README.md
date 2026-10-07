@@ -6,14 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 
 # hello_atomvm_serial
 
-`hello_atomvm_serial` は、ESP32-C5 と AtomVM でシリアル通信を試すためのサンプルです。
+`hello_atomvm_serial` は、ESP32 と AtomVM でシリアル通信を試すためのサンプルです。
 
-既存の serial distributed Erlang と、RS485 / Modbus RTU の実験を独立した動作モードとして収録しています。
+既存の serial distributed Erlang と、RS485 / Modbus RTU の実験を独立した動作モードとして収録しています。手元では Seeed Studio XIAO ESP32-C5 を使って検証していますが、ESP32-C5 固有の実装ではありません。
 
 ## できること
 
 - 2 台の AtomVM ノードを UART 上の `serial_dist` で接続
-- ESP32-C5 の `UART1` から RS485 へ生のバイト列を送受信
+- ESP32 の `UART1` から RS485 へ生のバイト列を送受信
 - Modbus RTU function `0x03` の request を生成
 - Modbus RTU response の CRC16、unit id、register 数を検証して decode
 - 接続中の ESP32 variant に合う AtomVM firmware を ExAtomVM から install
@@ -49,13 +49,15 @@ UART                      TTL ↔ RS485 自動方向制御 transceiver
                                RS485 A / B
 ```
 
-## 対象環境
+## 検証環境
 
-- ESP32-C5-DevKitC-1
+- Seeed Studio XIAO ESP32-C5
 - AtomVM `v0.7.0-beta.0`
 - Elixir `1.17` / Erlang/OTP `27`
 - USB data cable
 - RS485 実験では 3.3 V logic 対応の自動方向制御 TTL ↔ RS485 transceiver と RS485 peer
+
+これは現在の検証環境であり、対応 board を ESP32-C5 に限定するものではありません。AtomVM / ExAtomVM が対応する別の ESP32 variant でも、board に合わせて UART pin を設定すれば同じ experiment を実行できます。
 
 ## AtomVM の install
 
@@ -65,7 +67,7 @@ UART                      TTL ↔ RS485 自動方向制御 transceiver
 mix deps.get
 ```
 
-ESP32-C5 を USB 接続し、AtomVM firmware を install します。
+ESP32 board を USB 接続し、AtomVM firmware を install します。
 
 ```sh
 mix atomvm.esp32.install --version v0.7.0-beta.0
@@ -89,13 +91,13 @@ ESP32 上で動く firmware の version は `atomvm.esp32.install --version` で
 
 ## UART 設定
 
-ESP32-C5 の既定値:
+手元の XIAO ESP32-C5 で使っている既定値:
 
 | 項目 | `serial_dist` / `rs485_echo` | `modbus_rtu` |
 | --- | --- | --- |
 | peripheral | `UART1` | `UART1` |
-| TX | GPIO24 / J3 pin 4 | GPIO24 / J3 pin 4 |
-| RX | GPIO23 / J3 pin 5 | GPIO23 / J3 pin 5 |
+| TX | D6 / GPIO11 | D6 / GPIO11 |
+| RX | D7 / GPIO12 | D7 / GPIO12 |
 | speed | 115200 | 9600 |
 | data bits | 8 | 8 |
 | parity | none | none |
@@ -116,6 +118,8 @@ ESP32-C5 の既定値:
 
 これらの値は `config/config.exs` から compile-time configuration に取り込みます。設定値を変更したときは、古い値を残さないように flash 前に `mix clean` を 1 回実行します。`ATOMVM_EXPERIMENT` だけを変更するときは不要です。
 
+別の board では pinout を確認し、`ATOMVM_UART_TX_PIN` と `ATOMVM_UART_RX_PIN` を設定してください。UART peripheral 名も異なる場合は `ATOMVM_UART_PERIPHERAL` で変更できます。
+
 ## Raw RS485 echo
 
 Modbus を試す前に、plain byte の送受信だけを確認します。
@@ -124,16 +128,16 @@ Modbus を試す前に、plain byte の送受信だけを確認します。
 
 AtomVM の通常の UART API だけで動かすため、自動方向制御 transceiver を使います。DE / RE を GPIO で制御する module は、この実験の対象外です。
 
-| ESP32-C5-DevKitC-1 | RS485 transceiver | 方向 |
+| XIAO ESP32-C5 | RS485 transceiver | 方向 |
 | --- | --- | --- |
-| GPIO24 / J3 pin 4 | DI / TXD | ESP32-C5 → bus |
-| GPIO23 / J3 pin 5 | RO / RXD | bus → ESP32-C5 |
+| D6 / GPIO11 | DI / TXD | ESP32 → bus |
+| D7 / GPIO12 | RO / RXD | bus → ESP32 |
 | GND | GND | common ground |
 | 3V3 | VCC | module が 3.3 V 対応の場合のみ |
 | — | A | peer の A |
 | — | B | peer の B |
 
-5 V 専用 MAX485 module の RO を ESP32-C5 に直結しないでください。MAX3485 / SP3485 系などの 3.3 V transceiver と自動方向制御回路を備えた module を使うか、適切な level conversion を入れます。
+5 V 専用 MAX485 module の RO を 3.3 V logic の ESP32 に直結しないでください。MAX3485 / SP3485 系などの 3.3 V transceiver と自動方向制御回路を備えた module を使うか、適切な level conversion を入れます。
 
 長い bus では両端に 120 Ω termination を置き、bias resistor は bus 上の 1 箇所だけにします。製品間で A/B の表記が逆の場合は、A と B を入れ替えて確認します。
 
@@ -215,13 +219,13 @@ CRC error、異なる unit id、register 数の不一致、Modbus exception、ma
 
 ## Serial distributed Erlang
 
-`serial_dist` は既定の動作モードです。2 台の ESP32-C5 を次のように接続します。
+`serial_dist` は既定の動作モードです。既定の pin 設定では 2 台の XIAO ESP32-C5 を次のように接続します。
 
-- Board A GPIO24 → Board B GPIO23
-- Board A GPIO23 ← Board B GPIO24
+- Board A D6 / GPIO11 → Board B D7 / GPIO12
+- Board A D7 / GPIO12 ← Board B D6 / GPIO11
 - Board A GND ↔ Board B GND
 
-RS485 transceiver は使いません。
+RS485 transceiver は使いません。別の ESP32 board を使う場合は、それぞれの pinout に合わせて TX / RX を選びます。
 
 Board A:
 
@@ -267,7 +271,7 @@ mix test
 
 テストには標準的な request vector `01 03 00 00 00 0A C5 CD`、CRC failure、exception response、複数 register の decode、response length の判定を含みます。
 
-ESP32-C5 実機では次を確認しています。
+Seeed Studio XIAO ESP32-C5 実機では次を確認しています。
 
 - AtomVM `v0.7.0-beta.0` の install と起動
 - partition table からの `main.avm` 検出と application flash
@@ -285,4 +289,4 @@ RS485 A/B bus 上の bidirectional echo と Modbus slave response は、transcei
 
 - [AtomVM release-0.7 UART guide](https://doc.atomvm.org/release-0.7/programmers-guide.html#uart)
 - [ExAtomVM](https://github.com/atomvm/exatomvm)
-- [ESP32-C5-DevKitC-1 user guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c5/esp32-c5-devkitc-1/user_guide.html)
+- [Seeed Studio XIAO ESP32-C5 getting started guide](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/)
