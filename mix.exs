@@ -9,8 +9,7 @@ defmodule SampleApp.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       atomvm: [
-        start: SampleApp,
-        flash_offset: 0x250000
+        start: atomvm_start_module()
       ]
     ]
   end
@@ -25,7 +24,18 @@ defmodule SampleApp.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:exatomvm, github: "atomvm/exatomvm"}
+      {:exatomvm, github: "atomvm/exatomvm", runtime: false},
+      {:pythonx, "~> 0.4.0", runtime: false},
+      {:req, "~> 0.7.0", runtime: false}
     ]
+  end
+
+  defp atomvm_start_module do
+    case System.get_env("ATOMVM_EXPERIMENT") || "serial_dist" do
+      "serial_dist" -> SampleApp
+      "rs485_echo" -> SampleApp.RS485.Echo
+      "modbus_rtu" -> SampleApp.Modbus.Client
+      experiment -> raise "unknown ATOMVM_EXPERIMENT: #{inspect(experiment)}"
+    end
   end
 end
