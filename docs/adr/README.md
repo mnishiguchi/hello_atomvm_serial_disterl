@@ -1,74 +1,37 @@
-<!--
-SPDX-FileCopyrightText: 2026 Masatoshi Nishiguchi
+# アーキテクチャ決定記録
 
-SPDX-License-Identifier: Apache-2.0
--->
+`hello_atomvm_serial` で採用している設計方針を、個別の判断として記録します。
 
-## Architecture Decision Records
+このリポジトリは AtomVM のシリアル通信を学ぶためのサンプル集として、できるだけ AtomVM が提供する機能をそのまま使い、独自の仕組みは必要な範囲に限定する方針です。
 
-We keep architecture decisions as Markdown ADRs in the repository.
+## 決定マップ
 
-### Basic rules
+| 番号 | 問い | 現在の判断 |
+| --- | --- | --- |
+| [0001](0001-serial-distを使って2台のesp32を接続する.md) | 2 台の AtomVM デバイスを UART でどう接続するか | AtomVM の `serial_dist` を専用 UART 上で使用する |
 
-- Write an ADR when a decision changes long-term architecture, transport model, node identity rules, deployment model, or externally visible distributed behavior.
-- Keep one ADR focused on one decision.
-- Use stable statuses:
-  - `Proposed`
-  - `Accepted`
-  - `Superseded`
-  - `Deprecated`
-- Use `Accepted` consistently once a decision is agreed.
-- When a decision moves from `Proposed` to `Accepted`, update the same ADR file in place.
-- Create a new ADR only when a later decision changes or replaces the earlier one.
-- When that happens, keep the old ADR and mark it `Superseded`.
-- Cross-reference related ADRs when one builds on or replaces another.
+これらは現在の採用判断です。実装手順、一時的な検証結果、配線方法などは ADR ではなく README や各サンプルのドキュメントに記録します。
 
-### Scope guidance
+## ADR の書き方
 
-Use ADRs for decisions such as:
-
-- serial or network transport choices
-- distributed Erlang startup and naming rules
-- persistence and provisioning strategy
-- module responsibility splits
-- compatibility and rollout policy
-
-Do not use ADRs for routine implementation details, temporary checklists, or ordinary task tracking.
-
-### Naming
-
-Recommended file naming:
-
-```text
-docs/adr/YYYY-MM-DD-short-title.md
-```
-
-Examples:
-
-- `docs/adr/2026-04-24-use-serial-dist-for-two-esp32-demo.md`
-
-### Minimal ADR template
+ADR は4桁の連番を付け、原則として次の構成で記述します。
 
 ```markdown
-# ADR YYYY-MM-DD: Title
+# NNNN: タイトル
 
-## Status
+## 状態
 
-Proposed
+採用
 
-## Context
+## 背景
 
-## Decision
+## 決定
 
-## Rationale
+## 理由
 
-## Consequences
+## 影響
 
-### Positive
-
-### Negative
-
-## Rejected alternatives
-
-## Follow-up implications
+## 再評価条件
 ```
+
+採用済みの判断を変更する場合は既存 ADR を書き換えず、新しい ADR から置き換える判断を明記します。
